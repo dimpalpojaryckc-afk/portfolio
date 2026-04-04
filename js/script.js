@@ -181,33 +181,53 @@ function initMobileMenu() {
 }
 
 // ========================================
-// Contact Form Handling
+// Contact Form Handling (Django Backend)
 // ========================================
 function initContactForm() {
     const contactForm = document.getElementById('contactForm');
     
     if (contactForm) {
-        contactForm.addEventListener('submit', (e) => {
+        contactForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Get form data
             const formData = new FormData(contactForm);
             const name = formData.get('name');
             const email = formData.get('email');
             const subject = formData.get('subject');
             const message = formData.get('message');
             
-            // Create mailto link with form data
-            const mailtoLink = `mailto:dimpalpojaryckc@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`)}`;
+            if (!name || !email || !subject || !message) {
+                showAlert('Please fill in all fields', 'error');
+                return;
+            }
             
-            // Open email client
-            window.location.href = mailtoLink;
+            const submitBtn = contactForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
             
-            // Show success message
-            showAlert('Message prepared! Your email client will open to send the message.', 'success');
-            
-            // Reset form
-            contactForm.reset();
+            try {
+                const response = await fetch('http://localhost:8000/contact/', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.status === 'success') {
+                    showAlert(result.message, 'success');
+                    contactForm.reset();
+                } else {
+                    showAlert(result.message || 'Failed to send message', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Network error. Please make sure Django server is running on port 8000.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            }
         });
     }
 }
